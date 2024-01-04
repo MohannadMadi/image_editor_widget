@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image/image.dart' as img;
 
 void main() {
@@ -17,7 +17,8 @@ class Home extends StatefulWidget {
 }
 
 File? pickedImage;
-
+const int rotateClockWise = 90;
+const int rotateCounterClockWise = -90;
 Future pickImage() async {
   try {
     final picker = ImagePicker();
@@ -29,53 +30,52 @@ Future pickImage() async {
   }
 }
 
-Future<File?> resizeImage(File originalImage) async {
-  final result = await FlutterImageCompress.compressAndGetFile(
-    originalImage.path,
-    originalImage.path, // Overwrite the original file
-    quality: 90,
-    minWidth: 80,
-    minHeight: 60,
-  );
-
-  return result as File;
-}
-
-Future<img.Image?> rotateImage(File imageFile, int direction) async {
+Future<File> rotateImage(File imageFile, int rotationAngle) async {
   final image = img.decodeImage(await imageFile.readAsBytes());
 
   // Rotate the image (e.g., rotate by 90 degrees)
-  final rotatedImage = img.copyRotate(image!, angle: 90 * direction);
-  rotatedImage;
-  return rotatedImage;
+  final rotatedImage = img.copyRotate(image!, angle: rotationAngle);
+
+  // Create a new File instance for the rotated image
+  final rotatedImageFile =
+      File(imageFile.path.replaceAll('.jpg', '_rotated.jpg'));
+  await rotatedImageFile.writeAsBytes(img.encodeJpg(rotatedImage));
+
+  return rotatedImageFile;
 }
 
-Future<File?> resizeAndRotateImage(File originalImage, int direction) async {
-  final resizedImage = await resizeImage(originalImage);
-  if (resizedImage == null) {
-    // Handle resizing error
-    return null;
-  }
+Future<void> cropImage() async {
+  final ImageCropper imageCropper = ImageCropper();
 
-  final rotatedImage = await rotateImage(resizedImage, direction);
-  if (rotatedImage == null) {
-    // Handle rotation error
-    return null;
-  }
-
-  return rotatedImage as File;
+  pickedImage = (await imageCropper.cropImage(
+      sourcePath: pickedImage!.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1.0, ratioY: 1.0),
+      compressQuality: 100,
+      maxWidth: 700,
+      maxHeight: 700,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Crop Image',
+          toolbarColor: Colors.deepOrange,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.original,
+          lockAspectRatio: false,
+        ),
+        IOSUiSettings(),
+      ])) as File?;
 }
 
 class _HomeState extends State<Home> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData.dark(),
       home: Scaffold(
         body: Column(children: [
           InkWell(
             onTap: () async {
               await pickImage();
-              rotateImage(pickedImage!, -1);
+
               setState(() {});
             },
             child: Container(
@@ -88,13 +88,39 @@ class _HomeState extends State<Home> {
             ),
           ),
           pickedImage != null
-              ? Container(
-                  color: Colors.amber,
-                  width: 200,
-                  height: 200,
-                  child: Image.file(pickedImage!),
+              ? InkWell(
+                  onTap: () async {
+                    setState(() {});
+                  },
+                  child: Container(
+                    color: Colors.amber,
+                    width: 200,
+                    height: 260,
+                    child: Image.file(pickedImage!),
+                  ),
                 )
               : Container(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                  onPressed: () async {
+                    pickedImage =
+                        await rotateImage(pickedImage!, rotateClockWise);
+                    debugPrint("SSSSS");
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.rotate_90_degrees_cw)),
+              IconButton(
+                  onPressed: () async {
+                    pickedImage =
+                        await rotateImage(pickedImage!, rotateCounterClockWise);
+                    debugPrint("SSSSS");
+                    setState(() {});
+                  },
+                  icon: const Icon(Icons.rotate_90_degrees_ccw)),
+            ],
+          )
         ]),
       ),
     );
