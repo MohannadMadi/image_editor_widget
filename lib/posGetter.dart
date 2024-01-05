@@ -20,29 +20,74 @@ class PositionGetter extends StatefulWidget {
   State<PositionGetter> createState() => _PositionGetterState();
 }
 
-double imgPosVertiacal = 0;
-double imgPosHorisontal = 0;
+late double imgPosVertiacal;
+late double imgPosHorisontal;
 GlobalKey imgKey = GlobalKey();
 GlobalKey cropperKey = GlobalKey();
 
-void getImagePosition() {
+Offset getImagePosition() {
   RenderBox imgBox = imgKey.currentContext!.findRenderObject() as RenderBox;
 
   Offset imgPosition = imgBox.localToGlobal(Offset.zero);
 
-  print('First Widget Position: $imgPosition');
+  return imgPosition;
 }
 
-void getCropperPosition() {
+Offset getImageEndPosition() {
+  RenderBox imgBox = imgKey.currentContext!.findRenderObject() as RenderBox;
+
+  Offset imgPosition =
+      imgBox.localToGlobal(Offset(imgBox.size.width, imgBox.size.height));
+
+  return imgPosition;
+}
+
+Offset getCropperPosition() {
   RenderBox cropperBox =
       cropperKey.currentContext!.findRenderObject() as RenderBox;
 
   Offset cropperPosition = cropperBox.localToGlobal(Offset.zero);
 
-  print('First Widget Position: $cropperPosition');
+  return cropperPosition;
+}
+
+Offset getCropperEndPosition() {
+  RenderBox cropperBox =
+      cropperKey.currentContext!.findRenderObject() as RenderBox;
+
+  Offset cropperPosition = cropperBox
+      .localToGlobal(Offset(cropperBox.size.width, cropperBox.size.height));
+
+  return cropperPosition;
+}
+
+Size getCropperSize() {
+  RenderBox cropperBox =
+      cropperKey.currentContext!.findRenderObject() as RenderBox;
+  return cropperBox.size;
+}
+
+Size getImageSize() {
+  RenderBox imageBox = imgKey.currentContext!.findRenderObject() as RenderBox;
+  return imageBox.size;
+}
+
+bool isHeightLarger() {
+  RenderBox imgBox = imgKey.currentContext!.findRenderObject() as RenderBox;
+
+  Size imgSize = imgBox.size;
+
+  return imgSize.height > imgSize.width ? true : false;
 }
 
 class _PositionGetterState extends State<PositionGetter> {
+  @override
+  void initState() {
+    imgPosVertiacal = 0;
+    imgPosHorisontal = 0;
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -56,7 +101,8 @@ class _PositionGetterState extends State<PositionGetter> {
             Stack(
       children: [
         AnimatedPositioned(
-          duration: Duration.zero,
+          duration: const Duration(milliseconds: 10),
+          curve: Curves.easeInOut,
           top: imgPosVertiacal,
           left: imgPosHorisontal,
           child: SizedBox(
@@ -69,13 +115,42 @@ class _PositionGetterState extends State<PositionGetter> {
           child: GestureDetector(
             onVerticalDragUpdate: (details) {
               setState(() {
-                imgPosVertiacal += details.delta.dy;
-                getImagePosition();
+                print(details.delta.dy);
+                if (!details.delta.dy.isNegative &&
+                    (getImagePosition().dy + details.delta.dy) <=
+                        getCropperPosition().dy) {
+                  imgPosVertiacal += details.delta.dy;
+                } else if (!details.delta.dy.isNegative) {
+                  imgPosVertiacal = getCropperPosition().dy;
+                }
+                if (details.delta.dy.isNegative &&
+                    (getImageEndPosition().dy + details.delta.dy) >=
+                        getCropperEndPosition().dy) {
+                  imgPosVertiacal += details.delta.dy;
+                } else if (details.delta.dy.isNegative) {
+                  imgPosVertiacal = getCropperPosition().dy -
+                      (getImageSize().height - getCropperSize().height);
+                }
               });
             },
             onHorizontalDragUpdate: (details) {
               setState(() {
-                imgPosHorisontal += details.delta.dx;
+                print(details.delta.dy);
+                if (!details.delta.dx.isNegative &&
+                    (getImagePosition().dx + details.delta.dx) <=
+                        getCropperPosition().dx) {
+                  imgPosHorisontal += details.delta.dx;
+                } else if (!details.delta.dx.isNegative) {
+                  imgPosHorisontal = getCropperPosition().dx;
+                }
+                if (details.delta.dx.isNegative &&
+                    (getImageEndPosition().dx + details.delta.dx) >=
+                        getCropperEndPosition().dx) {
+                  imgPosHorisontal += details.delta.dx;
+                } else if (details.delta.dx.isNegative) {
+                  imgPosHorisontal = getCropperPosition().dx -
+                      (getImageSize().width - getCropperSize().width);
+                }
               });
             },
             child: Container(
@@ -85,6 +160,22 @@ class _PositionGetterState extends State<PositionGetter> {
               color: Color(0x2fffffff),
             ),
           ),
+        ),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Row(),
+            InkWell(onTap: () async{
+              await readIMageDetailsProviider.cropImage()
+            },
+              child:
+                  Container(color: Colors.black, child: Text("Save Changes")),
+            ),
+            const SizedBox(
+              height: 20,
+            )
+          ],
         )
       ],
     ));
