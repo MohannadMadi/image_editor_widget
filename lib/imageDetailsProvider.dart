@@ -25,8 +25,8 @@ class ImageDetailsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> cropImage(File file) async {
-    img.Image? image = await img.decodeImageFile(file.path);
+  Future<void> cropImage(Offset imgOffset) async {
+    img.Image? image = await img.decodeImageFile(pickedImage!.path);
     // int x = cropArea.left.toInt();
     // int y = cropArea.top.toInt();
     int width = await getImageRect();
@@ -37,13 +37,17 @@ class ImageDetailsProvider extends ChangeNotifier {
     } else {
       height = width;
     }
-    img.Image croppedImage =
-        img.copyCrop(image!, x: 0, y: 0, height: height, width: width);
+
+    img.Image croppedImage = img.copyCrop(image!,
+        x: imgOffset.dx.toInt(),
+        y: imgOffset.dy.toInt(),
+        height: height,
+        width: width);
 // make the name of the new fiile change only in the last path
 //example: D:downloads/images/image1.jpg becomes D:downloads/images/"/${DateTime.now().millisecondsSinceEpoch}_cropped.jpg"
-    File croppedFile = File(file.path.replaceRange(
-        file.path.lastIndexOf('/'),
-        file.path.length,
+    File croppedFile = File(pickedImage!.path.replaceRange(
+        pickedImage!.path.lastIndexOf('/'),
+        pickedImage!.path.length,
         "/${DateTime.now().millisecondsSinceEpoch}_cropped.jpg"));
     pickedImage = await croppedFile.writeAsBytes(img.encodeJpg(croppedImage));
 

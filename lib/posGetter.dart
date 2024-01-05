@@ -22,8 +22,8 @@ class PositionGetter extends StatefulWidget {
 
 late double imgPosVertiacal;
 late double imgPosHorisontal;
-GlobalKey imgKey = GlobalKey();
-GlobalKey cropperKey = GlobalKey();
+late GlobalKey imgKey;
+late GlobalKey cropperKey;
 
 Offset getImagePosition() {
   RenderBox imgBox = imgKey.currentContext!.findRenderObject() as RenderBox;
@@ -68,8 +68,15 @@ Size getCropperSize() {
 }
 
 Size getImageSize() {
-  RenderBox imageBox = imgKey.currentContext!.findRenderObject() as RenderBox;
-  return imageBox.size;
+  RenderBox? imageBox = imgKey.currentContext?.findRenderObject() as RenderBox?;
+
+  // Check if imageBox is not null before accessing its properties
+  if (imageBox != null) {
+    return imageBox.size;
+  } else {
+    // Return a default size or handle the null case as needed
+    return Size.zero;
+  }
 }
 
 bool isHeightLarger() {
@@ -80,25 +87,41 @@ bool isHeightLarger() {
   return imgSize.height > imgSize.width ? true : false;
 }
 
+late Size imgSize;
+
 class _PositionGetterState extends State<PositionGetter> {
   @override
   void initState() {
     imgPosVertiacal = 0;
     imgPosHorisontal = 0;
+    imgKey = GlobalKey();
+    cropperKey = GlobalKey();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Now, it's safe to access the context and initialize imgSize
+      setState(() {
+        imgPosVertiacal = (MediaQuery.of(context).size.center(Offset.zero).dy -
+            imgSize.height / 2);
+        imgPosHorisontal = MediaQuery.of(context).size.center(Offset.zero).dx -
+            imgSize.width / 2;
+      });
+    });
+
     super.initState();
   }
 
+  bool init = false;
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+    Offset center = MediaQuery.of(context).size.center(Offset.zero);
+
     var watchIMageDetailsProviider = context.watch<ImageDetailsProvider>();
     var readIMageDetailsProviider = context.read<ImageDetailsProvider>();
+
     return Scaffold(
-        body:
-            //  FloatingActionButton(onPressed: () async {
-            //   await context.read<ImageDetailsProvider>().cropImage(widget.imageFile);
-            // }),
-            Stack(
+        body: Stack(
+      alignment: Alignment.center,
       children: [
         AnimatedPositioned(
           duration: const Duration(milliseconds: 10),
@@ -107,9 +130,11 @@ class _PositionGetterState extends State<PositionGetter> {
           left: imgPosHorisontal,
           child: SizedBox(
               key: imgKey,
-              width: screenWidth,
+              // width: screenWidth,
               child: Image.file(
-                  context.watch<ImageDetailsProvider>().pickedImage!)),
+                context.watch<ImageDetailsProvider>().pickedImage!,
+                width: screenWidth,
+              )),
         ),
         Center(
           child: GestureDetector(
@@ -166,9 +191,11 @@ class _PositionGetterState extends State<PositionGetter> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Row(),
-            InkWell(onTap: () async{
-              await readIMageDetailsProviider.cropImage()
-            },
+            InkWell(
+              onTap: () async {
+                await readIMageDetailsProviider.cropImage(getImagePosition());
+                Navigator.of(context).pop();
+              },
               child:
                   Container(color: Colors.black, child: Text("Save Changes")),
             ),
