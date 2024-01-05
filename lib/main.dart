@@ -36,8 +36,10 @@ Future<File> rotateImage(File imageFile, int rotationAngle) async {
 
   final rotatedImage = img.copyRotate(image!, angle: rotationAngle);
 
-  final rotatedImageFile =
-      File(imageFile.path.replaceAll('.jpg', '_rotated.jpg'));
+  final rotatedImageFile = File(imageFile.path.replaceRange(
+      imageFile.path.lastIndexOf('/'),
+      imageFile.path.length,
+      "/${DateTime.now().millisecondsSinceEpoch}.jpg"));
   await rotatedImageFile.writeAsBytes(img.encodeJpg(rotatedImage));
 
   return rotatedImageFile;
@@ -87,7 +89,8 @@ Future<File> cropImage(File file, Rect cropArea) async {
   // Directory tempDir = await getTemporaryDirectory();
   // String tempPath = tempDir.path;
 
-  File croppedFile = File(file.path.replaceAll('.jpg', '_cropped.jpg'));
+  File croppedFile =
+      File('${DateTime.now().millisecondsSinceEpoch}_cropped.jpg');
   await croppedFile.writeAsBytes(img.encodeJpg(croppedImage));
 
   return croppedFile;
@@ -145,7 +148,7 @@ class _HomeState extends State<Home> {
           ),
           IconButton(
             onPressed: () async {
-              Rect rect = Rect.fromLTWH(50, 50, 100, 100);
+              Rect rect = const Rect.fromLTWH(50, 50, 100, 100);
 
               File? croppedImage = await cropImage(pickedImage!, rect);
               pickedImage = croppedImage;
