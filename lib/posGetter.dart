@@ -22,6 +22,25 @@ class PositionGetter extends StatefulWidget {
 
 double imgPosVertiacal = 0;
 double imgPosHorisontal = 0;
+GlobalKey imgKey = GlobalKey();
+GlobalKey cropperKey = GlobalKey();
+
+void getImagePosition() {
+  RenderBox imgBox = imgKey.currentContext!.findRenderObject() as RenderBox;
+
+  Offset imgPosition = imgBox.localToGlobal(Offset.zero);
+
+  print('First Widget Position: $imgPosition');
+}
+
+void getCropperPosition() {
+  RenderBox cropperBox =
+      cropperKey.currentContext!.findRenderObject() as RenderBox;
+
+  Offset cropperPosition = cropperBox.localToGlobal(Offset.zero);
+
+  print('First Widget Position: $cropperPosition');
+}
 
 class _PositionGetterState extends State<PositionGetter> {
   @override
@@ -39,8 +58,9 @@ class _PositionGetterState extends State<PositionGetter> {
         AnimatedPositioned(
           duration: Duration.zero,
           top: imgPosVertiacal,
-          left: 0,
+          left: imgPosHorisontal,
           child: SizedBox(
+              key: imgKey,
               width: screenWidth,
               child: Image.file(
                   context.watch<ImageDetailsProvider>().pickedImage!)),
@@ -50,12 +70,16 @@ class _PositionGetterState extends State<PositionGetter> {
             onVerticalDragUpdate: (details) {
               setState(() {
                 imgPosVertiacal += details.delta.dy;
+                getImagePosition();
               });
             },
             onHorizontalDragUpdate: (details) {
-              imgPosHorisontal += details.delta.dx;
+              setState(() {
+                imgPosHorisontal += details.delta.dx;
+              });
             },
             child: Container(
+              key: cropperKey,
               width: screenWidth,
               height: screenWidth,
               color: Color(0x2fffffff),
