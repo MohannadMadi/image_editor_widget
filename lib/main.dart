@@ -4,9 +4,15 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
+import 'package:product_image_editor/imageDetailsProvider.dart';
+import 'package:product_image_editor/posGetter.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const Home());
+  runApp(ChangeNotifierProvider(
+    create: (context) => ImageDetailsProvider(),
+    child: const Home(),
+  ));
 }
 
 class Home extends StatefulWidget {
@@ -16,84 +22,14 @@ class Home extends StatefulWidget {
   State<Home> createState() => _HomeState();
 }
 
-File? pickedImage;
 const int rotateClockWise = 90;
 const int rotateCounterClockWise = -90;
 
-Future pickImage() async {
-  try {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    pickedImage = File(pickedFile!.path);
-    debugPrint(pickedImage!.path);
-  } catch (e) {
-    debugPrint(e.toString());
-  }
-}
-
-Future<File> rotateImage(File imageFile, int rotationAngle) async {
-  final image = img.decodeImage(await imageFile.readAsBytes());
-
-  final rotatedImage = img.copyRotate(image!, angle: rotationAngle);
-
-  final rotatedImageFile = File(imageFile.path.replaceRange(
-      imageFile.path.lastIndexOf('/'),
-      imageFile.path.length,
-      "/${DateTime.now().millisecondsSinceEpoch}.jpg"));
-  await rotatedImageFile.writeAsBytes(img.encodeJpg(rotatedImage));
-
-  return rotatedImageFile;
-}
-
-// Future<File?> cropImage(File imageFile) async {
-//   final ImageCropper imageCropper = ImageCropper();
-//   try {
-//     CroppedFile? cropResult = await imageCropper.cropImage(
-//       sourcePath: imageFile.path,
-//       aspectRatio: const CropAspectRatio(ratioX: 0.50, ratioY: 1.0),
-//       compressQuality: 100,
-//       maxHeight: 222,
-//       maxWidth: 222,
-//       uiSettings: [
-//         AndroidUiSettings(
-//           toolbarTitle: 'Crop Image',
-//           toolbarColor: Colors.deepOrange,
-//           toolbarWidgetColor: Colors.white,
-//           initAspectRatio: CropAspectRatioPreset.original,
-//           lockAspectRatio: false,
-//         ),
-//         IOSUiSettings(),
-//       ],
-//     );
-
-//     // Use cropResult.path to get the path of the cropped image
-//     return File(cropResult!.path);
-//   } catch (e) {
-//     debugPrint("---------------------$e");
-//   }
-//   return null;
-// }
-
-Future<File> cropImage(File file, Rect cropArea) async {
-  Uint8List bytes = await file.readAsBytes();
-  img.Image? image = img.decodeImage(bytes);
-
-  int x = cropArea.left.toInt();
-  int y = cropArea.top.toInt();
-  int width = cropArea.width.toInt();
-  int height = cropArea.height.toInt();
-
-  img.Image croppedImage =
-      img.copyCrop(image!, x: x, y: y, height: height, width: width);
-
-  // Directory tempDir = await getTemporaryDirectory();
-  // String tempPath = tempDir.path;
-
-  File croppedFile =
-      File('${DateTime.now().millisecondsSinceEpoch}_cropped.jpg');
-  await croppedFile.writeAsBytes(img.encodeJpg(croppedImage));
-
-  return croppedFile;
+Future<Rect> getImageRect(File file) async {
+  img.Image? image = await img.decodeImageFile(file.path);
+  Rect rect = Rect.fromLTWH(image!.width / 2, image.height / 2,
+      image.width.toDouble(), image.height.toDouble());
+  return rect;
 }
 
 class _HomeState extends State<Home> {
@@ -105,7 +41,7 @@ class _HomeState extends State<Home> {
         body: Column(children: [
           InkWell(
             onTap: () async {
-              await pickImage();
+              await context.read<ImageDetailsProvider>().pickImage();
               setState(() {});
             },
             child: Container(
@@ -117,12 +53,13 @@ class _HomeState extends State<Home> {
               child: const Text("Add image"),
             ),
           ),
-          pickedImage != null
+          context.watch<ImageDetailsProvider>().pickedImage != null
               ? Container(
                   color: Colors.amber,
                   width: 200,
                   height: 260,
-                  child: Image.file(pickedImage!),
+                  child: Image.file(
+                      context.watch<ImageDetailsProvider>().pickedImage!),
                 )
               : Container(),
           Row(
@@ -130,32 +67,42 @@ class _HomeState extends State<Home> {
             children: [
               IconButton(
                   onPressed: () async {
-                    pickedImage =
-                        await rotateImage(pickedImage!, rotateClockWise);
+                    await context.read<ImageDetailsProvider>().rotateImage(
+                        context.read<ImageDetailsProvider>().pickedImage!,
+                        rotateClockWise);
+
                     debugPrint("SSSSS");
                     setState(() {});
                   },
                   icon: const Icon(Icons.rotate_90_degrees_cw)),
               IconButton(
                   onPressed: () async {
-                    pickedImage =
-                        await rotateImage(pickedImage!, rotateCounterClockWise);
+                    await context.read<ImageDetailsProvider>().rotateImage(
+                        context.read<ImageDetailsProvider>().pickedImage!,
+                        rotateCounterClockWise);
                     debugPrint("SSSSS");
                     setState(() {});
                   },
                   icon: const Icon(Icons.rotate_90_degrees_ccw)),
             ],
           ),
-          IconButton(
-            onPressed: () async {
-              Rect rect = const Rect.fromLTWH(50, 50, 100, 100);
+          Builder(builder: (context) {
+            return IconButton(
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => PositionGetter(
+                          imageFile: context
+                              .watch<ImageDetailsProvider>()
+                              .pickedImage!,
+                        )));
 
-              File? croppedImage = await cropImage(pickedImage!, rect);
-              pickedImage = croppedImage;
-              setState(() {});
-            },
-            icon: const Icon(Icons.crop),
-          )
+                // File? croppedImage = await cropImage(pickedImage!);
+                // pickedImage = croppedImage;
+                setState(() {});
+              },
+              icon: const Icon(Icons.crop),
+            );
+          })
         ]),
       ),
     );
