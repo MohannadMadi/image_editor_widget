@@ -6,6 +6,8 @@ import 'package:product_image_editor/main.dart';
 
 class ImageDetailsProvider extends ChangeNotifier {
   File? pickedImage;
+  int? imageRect;
+  bool? heightIsLarger;
   void changeImage(File image) {
     pickedImage = image;
     notifyListeners();
@@ -16,7 +18,7 @@ class ImageDetailsProvider extends ChangeNotifier {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: ImageSource.camera);
       pickedImage = File(pickedFile!.path);
-      debugPrint(pickedImage!.path);
+      imageRect = await getImageRect();
     } catch (e) {
       debugPrint(e.toString());
     }
@@ -25,11 +27,10 @@ class ImageDetailsProvider extends ChangeNotifier {
 
   Future<void> cropImage(File file) async {
     img.Image? image = await img.decodeImageFile(file.path);
-    Rect cropArea = await getImageRect(file);
-    int x = cropArea.left.toInt();
-    int y = cropArea.top.toInt();
-    int width = cropArea.width.toInt();
-    int height = cropArea.height.toInt();
+    // int x = cropArea.left.toInt();
+    // int y = cropArea.top.toInt();
+    int width = await getImageRect();
+    int height = await getImageRect();
 
     if (width > height) {
       width = height;
@@ -62,5 +63,14 @@ class ImageDetailsProvider extends ChangeNotifier {
     pickedImage =
         await rotatedImageFile.writeAsBytes(img.encodeJpg(rotatedImage));
     notifyListeners();
+  }
+
+  Future<int> getImageRect() async {
+    img.Image? image = await img.decodeImageFile(pickedImage!.path);
+    image!.height > image.width
+        ? heightIsLarger = true
+        : heightIsLarger = false;
+    notifyListeners();
+    return image.height > image.width ? image.width : image.height;
   }
 }

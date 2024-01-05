@@ -1,8 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 import 'package:product_image_editor/imageDetailsProvider.dart';
 import 'package:product_image_editor/posGetter.dart';
@@ -24,13 +22,6 @@ class Home extends StatefulWidget {
 
 const int rotateClockWise = 90;
 const int rotateCounterClockWise = -90;
-
-Future<Rect> getImageRect(File file) async {
-  img.Image? image = await img.decodeImageFile(file.path);
-  Rect rect = Rect.fromLTWH(image!.width / 2, image.height / 2,
-      image.width.toDouble(), image.height.toDouble());
-  return rect;
-}
 
 class _HomeState extends State<Home> {
   @override
